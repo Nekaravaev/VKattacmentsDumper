@@ -25,11 +25,11 @@ class Dumper
         } else {
             throw new \Exception('Can\'t find user. Please, fill config.json');
         }
-        if (!is_dir($_SERVER['DOCUMENT_ROOT'].DIRECTORY_SEPARATOR.'result'.DIRECTORY_SEPARATOR)) {
-            mkdir($_SERVER['DOCUMENT_ROOT'].DIRECTORY_SEPARATOR.'result'.DIRECTORY_SEPARATOR, 0777);
+        if (!is_dir('result'.DIRECTORY_SEPARATOR)) {
+            mkdir('result'.DIRECTORY_SEPARATOR, 0777);
         }
-        if (!is_dir($_SERVER['DOCUMENT_ROOT'].DIRECTORY_SEPARATOR.'result'.DIRECTORY_SEPARATOR.$this->folder.DIRECTORY_SEPARATOR)) {
-            mkdir($_SERVER['DOCUMENT_ROOT'].DIRECTORY_SEPARATOR.'result'.DIRECTORY_SEPARATOR.$this->folder.DIRECTORY_SEPARATOR, 0777);
+        if (!is_dir('result'.DIRECTORY_SEPARATOR.$this->folder.DIRECTORY_SEPARATOR)) {
+            mkdir('result'.DIRECTORY_SEPARATOR.$this->folder.DIRECTORY_SEPARATOR, 0777);
         }
     }
 
@@ -65,15 +65,15 @@ class Dumper
      */
     public function getPhotos($start)
     {
-        $response = $this->useCurl("https://api.vk.com/method/messages.getHistoryAttachments?peer_id=$this->userId&count=10&access_token=$this->token&start=$start&media_type=photo&v=5.60");
+        $response = $this->useCurl("https://api.vk.com/method/messages.getHistoryAttachments?peer_id=$this->userId&count=200&access_token=$this->token&start_from=$start&media_type=photo&v=5.60");
         if (!empty($response->response->items)) {
             $pictures = $response->response->items;
             foreach ($pictures as $picture) {
                 $resolution = $this->getHighestResolutionUrl($picture->photo);
-                echo $this->savePicture('photo'.$picture->photo->owner_id. '_' .$picture->photo->id, $resolution);
+                echo $this->savePicture('photo'.$picture->photo->owner_id.'_'.$picture->photo->id, $resolution);
             }
         }
-        if (isset($response->response->next_from)){
+        if (isset($response->response->next_from)) {
             return $this->getPhotos($response->response->next_from);
         } else {
             return true;
@@ -111,21 +111,24 @@ class Dumper
      */
     public function savePicture($name, $url)
     {
-        if (file_put_contents($_SERVER['DOCUMENT_ROOT'].DIRECTORY_SEPARATOR.'result'.DIRECTORY_SEPARATOR.$this->folder.DIRECTORY_SEPARATOR."$name.jpg", $this->useCurl($url))) {
-            return date('[d.m.Y H:i:s]').' photo saved'.'<br/>'.PHP_EOL;
+        $response = $this->useCurl($url, false);
+        $puts = file_put_contents('result'.DIRECTORY_SEPARATOR.$this->folder.DIRECTORY_SEPARATOR."$name.jpg", $response);
+        if ($puts) {
+            return date('[d.m.Y H:i:s]').' '.$name.' photo saved'.'<br/>'.PHP_EOL;
         } else {
-            return date('[d.m.Y H:i:s]'). ' error with saving photo '.$name.'<br/>'.PHP_EOL;
+            return date('[d.m.Y H:i:s]').' error with saving photo '.$name.'<br/>'.PHP_EOL;
         }
     }
 
     /**
      * Use curl lib for receive data.
      *
-     * @param string $url Host with get params to connect
+     * @param string $url      Host with get params to connect
+     * @param bool   $asObject type of data to return
      *
      * @return object decoded json object
      */
-    public function useCurl($url)
+    public function useCurl($url, $asObject = true)
     {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -134,6 +137,6 @@ class Dumper
         $response = curl_exec($ch);
         curl_close($ch);
 
-        return json_decode($response);
+        return ($asObject) ? json_decode($response) : $response;
     }
 }
