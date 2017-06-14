@@ -3,6 +3,8 @@
 /**
  * Class for fetch photos from VK messages history.
  */
+namespace VKDumper;
+
 class Dumper
 {
     private $token;
@@ -19,7 +21,7 @@ class Dumper
         } else {
             throw new \Exception('Can\'t obtain token and userId. Please, fill config.json');
         }
-        $user = $this->useCurl("https://api.vk.com/method/users.get?user_ids=$this->userId&v=5.60");
+        $user = json_decode($this->curlRequest("https://api.vk.com/method/users.get?user_ids=$this->userId&v=5.60"));
         if (!empty($user->response[0]->id)) {
             $this->folder = '['.$user->response[0]->id.'] '.$user->response[0]->first_name.' '.$user->response[0]->last_name;
         } else {
@@ -40,6 +42,7 @@ class Dumper
      */
     public function startBenchmark()
     {
+        $this->photosCount = 0;
         return $this->executionTime = microtime(true);
     }
 
@@ -53,7 +56,7 @@ class Dumper
         $currentTime = microtime(true);
         $timeTook = $currentTime - $this->executionTime;
 
-        return $timeTook;
+        return 'Time took:'.$timeTook. PHP_EOL . 'Photos count: '. $this->photosCount;
     }
 
     /**
@@ -65,7 +68,7 @@ class Dumper
      */
     public function getPhotos($start)
     {
-        $response = $this->useCurl("https://api.vk.com/method/messages.getHistoryAttachments?peer_id=$this->userId&count=200&access_token=$this->token&start_from=$start&media_type=photo&v=5.60");
+        $response = json_decode($this->curlRequest("https://api.vk.com/method/messages.getHistoryAttachments?peer_id=$this->userId&count=100&access_token=$this->token&start_from=$start&media_type=photo&v=5.60"));
         if (!empty($response->response->items)) {
             $pictures = $response->response->items;
             foreach ($pictures as $picture) {
@@ -74,8 +77,10 @@ class Dumper
             }
         }
         if (isset($response->response->next_from)) {
+            echo 'next itteration'.PHP_EOL;
             return $this->getPhotos($response->response->next_from);
         } else {
+            echo 'done'.PHP_EOL;
             return true;
         }
     }
@@ -111,12 +116,13 @@ class Dumper
      */
     public function savePicture($name, $url)
     {
-        $response = $this->useCurl($url, false);
+        $response = $this->curlRequest($url);
         $puts = file_put_contents('result'.DIRECTORY_SEPARATOR.$this->folder.DIRECTORY_SEPARATOR."$name.jpg", $response);
         if ($puts) {
-            return date('[d.m.Y H:i:s]').' '.$name.' photo saved'.'<br/>'.PHP_EOL;
+            $this->photosCount++;
+            return date('[d.m.Y H:i:s]').' '.$name.' photo saved'.PHP_EOL;
         } else {
-            return date('[d.m.Y H:i:s]').' error with saving photo '.$name.'<br/>'.PHP_EOL;
+            return date('[d.m.Y H:i:s]').' error with saving photo '.$name.PHP_EOL;
         }
     }
 
@@ -124,11 +130,10 @@ class Dumper
      * Use curl lib for receive data.
      *
      * @param string $url      Host with get params to connect
-     * @param bool   $asObject type of data to return
      *
      * @return object decoded json object
      */
-    public function useCurl($url, $asObject = true)
+    public function curlRequest($url)
     {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -137,6 +142,6 @@ class Dumper
         $response = curl_exec($ch);
         curl_close($ch);
 
-        return ($asObject) ? json_decode($response) : $response;
+        return $response;
     }
 }

@@ -1,0 +1,16 @@
+{
+    "name": "karavaev/vk-attachments-dumper",
+    "description": "Class to dump attachments from VK messages",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Andrew",
+            "email": "nekaravaev@gmail.com"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {"VKDumper\\": "src/"}
+    }
+}
